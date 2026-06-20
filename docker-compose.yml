@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: odyssey-db
+    environment:
+      POSTGRES_DB: odyssey_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    container_name: odyssey-backend
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/odyssey_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      JWT_SECRET: OdysseyJWTSecretKey2024!SuperSecureBase64EncodedStringAtLeast256BitsLong
+      JWT_EXPIRATION: 86400000
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-rzp_test_placeholder}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-placeholder}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: odyssey-frontend
+    ports:
+      - "80:80"
+    environment:
+      VITE_API_URL: http://localhost:8080/api
+    restart: unless-stopped
+
+  localstack:
+    container_name: localstack-odyssey
+    image: localstack/localstack
+    ports:
+      - "127.0.0.1:4566:4566"
+    environment:
+      - SERVICES=s3,ses
+      - DEBUG=1
+    volumes:
+      - "./localstack_data:/var/lib/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+
+volumes:
+  postgres_data:

@@ -1,0 +1,44 @@
+# Java
+backend/target/
+backend/*.log
+backend/.mvn/
+backend/.idea/
+backend/*.iml
+
+backend/jdk-*/
+backend/*.zip
+
+# Node / Frontend / AI Proxy
+node_modules/
+frontend/node_modules/
+ai-proxy/node_modules/
+frontend/dist/
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker / Local Data
+localstack_data/
+localstack-data/
+postgres_data/
+backend/uploads/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.bak
+*.tmp
+
+# Secrets
+.env
+.env.local
+.env.*.local
+**/application-prod.properties
+**/secret.properties
+o d y s s e y . z i p  

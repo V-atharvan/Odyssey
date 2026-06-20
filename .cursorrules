@@ -1,0 +1,141 @@
+# Security Rules for AI-Generated Apps
+
+This project enforces a strict security posture. All code generated or modified by AI tools in this repository must comply with the following 12 core rules and AI-specific security checks.
+
+---
+
+## 1. Secrets and Environment Variables
+* **Rule:** Never expose secrets, private configuration, or credentials in client-side files.
+* **Requirements:**
+  * All secrets, database credentials, API keys, and private URLs must reside in environment variables (e.g. `.env` files for frontend/Node, system environment variables or property placeholders for Spring Boot).
+  * Do not commit `.env` or files containing actual secrets to Git. Maintain a `.env.example` file in the root showing the names of all expected variables but with empty/placeholder values.
+  * In the frontend (Vite/React), only variables prefixed with `VITE_` can be exposed, and they must never contain secret keys (e.g. Gemini API keys, Stripe secret keys, client secrets, etc. must never be client-side).
+  * If a public key (like Stripe Publishable Key) must be exposed in the frontend, add a comment explaining that it is intentionally public and safe to expose.
+
+## 2. Rate Limiting
+* **Rule:** Apply rate limiting on all public-facing endpoints to prevent brute-force attacks and runaway costs.
+* **Requirements:**
+  * **Auth Endpoints** (login, register, password reset): Limit to 5 requests per 15 minutes per IP.
+  * **General API:** Limit to 60 requests per minute per IP.
+  * **AI / LLM Endpoints:** Limit to 10 requests per minute per user/IP.
+  * **File Uploads:** Limit to 5 requests per minute per IP.
+  * Return `429 Too Many Requests` with a `Retry-After` header when rate limits are exceeded.
+  * Handle rate limit errors gracefully in the frontend and display a clear message to the user.
+
+## 3. Input Validation and Sanitization
+* **Rule:** Validate and sanitize all user input on the server before processing, storing, or displaying.
+* **Requirements:**
+  * Never trust client-side validation alone. Server-side validation is mandatory.
+  * Use schema validation libraries or framework validation mechanisms (e.g. Jakarta Validation annotations like `@NotBlank`, `@Email`, `@Size` in Spring Boot, or Zod/Joi in Node/JS).
+  * Sanitize all user-provided strings before storing or displaying them to prevent Cross-Site Scripting (XSS).
+  * Use parameterized queries or ORM methods. Never interpolate raw user input directly into SQL or NoSQL queries.
+  * Validate data types, lengths, allowed characters, ranges, and enum values.
+  * For file uploads: Validate the file size, MIME type, and extension on the server side. Reject invalid input with a clear `400 Bad Request` and log the attempt.
+
+## 4. Authentication and Authorization
+* **Rule:** Use established auth libraries/standards and verify identity and ownership on every request.
+* **Requirements:**
+  * Do not write custom cryptography or roll your own authentication protocols. Use established libraries.
+  * Passwords must never be stored in plaintext. Always use BCrypt (minimum cost factor 12) or Argon2.
+  * JWTs must be signed using a strong secret key (minimum 256-bit / 32 characters) stored securely in environment variables. JWT lifespans must be short (15 to 60 minutes).
+  * Store refresh tokens in `httpOnly` secure cookies rather than localStorage.
+  * Implement account lockout mechanisms after consecutive failed login attempts.
+  * Always verify the user's identity and their specific ownership/permissions for the resource on every single request. Never rely only on the fact that they are logged in.
+  * Enforce role-based access control (RBAC) on admin routes and sensitive operations.
+
+## 5. SQL and Database Security
+* **Rule:** Always use an ORM or parameterized queries to prevent SQL Injection.
+* **Requirements:**
+  * Use JPA/Hibernate, Prisma, Drizzle, or other safe ORMs. Do not construct SQL queries using string concatenation with untrusted input.
+  * Restrict database connection users to the minimum permissions needed for the application to function.
+  * Never return raw database stack traces or database engine errors to the client to avoid leaking database schema information.
+
+## 6. CORS Configuration
+* **Rule:** Never use wildcard CORS (`*`) in production.
+* **Requirements:**
+  * Explicitly whitelist only the origins that should access your API.
+  * Restrict allowed HTTP methods (e.g., limit to GET, POST, PUT, DELETE as needed).
+  * Only enable credentials flag (`allowCredentials(true)`) if absolutely necessary, and ensure origins are strictly verified.
+
+## 7. HTTP Security Headers
+* **Rule:** Always set HTTP security headers to protect the client and server.
+* **Requirements:**
+  * Configure headers like:
+    * `Content-Security-Policy` (CSP) to restrict allowed script, style, and media sources.
+    * `X-Frame-Options: DENY` or `SAMEORIGIN` to prevent clickjacking.
+    * `X-Content-Type-Options: nosniff` to prevent MIME-type sniffing.
+    * `Strict-Transport-Security` (HSTS) to enforce HTTPS connections.
+    * `Referrer-Policy: strict-origin-when-cross-origin`.
+  * Remove or override headers leaking framework information, such as `X-Powered-By`.
+
+## 8. File Upload Security
+* **Rule:** Validate, rename, and store user-uploaded files safely.
+* **Requirements:**
+  * Validate MIME types and file extensions on the server. Never rely on the client-provided content type.
+  * Set strict size limits (e.g., 5MB for images, 25MB for documents).
+  * Store uploaded files outside the web root (e.g., S3, Google Cloud Storage, Cloudinary, or an isolated, non-executable directory).
+  * Never serve user-uploaded files with executable permissions.
+  * Rename uploaded files using a UUID or secure random string. Never use the original filename directly as the storage key.
+  * If handling highly sensitive uploads, integrate malware/virus scanning.
+
+## 9. Error Handling and Logging
+* **Rule:** Never return internal system errors or stack traces to the client.
+* **Requirements:**
+  * Show generic error messages to the client (e.g., "Something went wrong" or "Resource not found").
+  * Log detailed errors server-side, including timestamps, request routes, user IDs (if authenticated), and sanitized inputs.
+  * In production, route logs to a secure, centralized logging service (e.g., Sentry, Datadog, Logtail).
+  * Respond with correct HTTP status codes (4xx for client errors, 5xx for server errors). Do not use 500 for validation errors.
+
+## 10. Dependency Security
+* **Rule:** Audit dependencies regularly and pin versions in production.
+* **Requirements:**
+  * Run dependency auditing tools (e.g., `npm audit`, `pip-audit`, Maven dependency checks) regularly and fix high/critical vulnerabilities.
+  * Avoid using unmaintained packages (no updates in 2+ years for security-critical functions).
+  * Pin exact dependency versions in production using lockfiles (`package-lock.json`, `pom.xml`, or `requirements.txt`).
+  * Review third-party package permissions and install scripts before installing.
+
+## 11. XSS Prevention
+* **Rule:** Never render untrusted dynamic user content as raw HTML.
+* **Requirements:**
+  * In React, never use `dangerouslySetInnerHTML` unless the content has been thoroughly sanitized using a trusted library like DOMPurify.
+  * Never use `eval()`, `new Function()`, or dynamic script insertion with user-controlled input.
+  * Avoid inline script tags; move javascript to external files to enable effective CSP enforcement.
+
+## 12. Pre-Deployment Gate Checklist
+Before every deployment, verify the following:
+* [ ] No `.env` files are committed to Git.
+* [ ] All production secrets are configured securely on the hosting platform.
+* [ ] Debug mode is disabled, and logging levels are optimized for production.
+* [ ] The database port is not exposed publicly.
+* [ ] HTTPS is enforced on all routes.
+* [ ] Rate limiting is active on all public endpoints.
+* [ ] CORS is restricted to verified, whitelisted origins.
+* [ ] Unused or test API routes are deactivated or deleted.
+
+---
+
+## AI and LLM-Specific Security Rules
+If the application interfaces with an LLM or AI API:
+1. **Untrusted Data Treatment:** Treat LLM outputs and LLM inputs as untrusted. Sanitize inputs to prevent prompt injection, and sanitize outputs before rendering in the UI to prevent XSS.
+2. **Token & Cost Control:** Always specify `max_tokens` (or equivalent) in API calls. Implement token budgets or rate limits per user/session to prevent denial-of-wallet / cost attacks.
+3. **Server-Side Keys:** Store all AI/LLM API keys server-side. Route requests through a backend proxy; never invoke LLM APIs directly from the browser.
+4. **Usage Logging:** Log per-user token usage to detect and block abusive behaviour early.
+
+---
+
+## Quick Reference Table
+
+| Security Area | Core Rule | Implementation Examples |
+|---|---|---|
+| **Secrets** | Keys in `.env` or system env only. Never in frontend files. | `.gitignore`, `.env.example` |
+| **Rate Limiting** | 5 req/15 min auth. 60 req/min general. | `express-rate-limit`, bucket-based filter |
+| **Input Validation** | Server-side validation, schema-based. | `@Valid` (Java), Zod/Pydantic |
+| **Auth** | BCrypt cost 12+, short JWT expiry, httpOnly cookies. | Spring Security, Lucia, NextAuth |
+| **SQL Security** | ORMs or parameterized queries only. No string concatenation. | Hibernate/JPA, Drizzle, Prisma |
+| **CORS** | No wildcards. Restrict to whitelisted origins. | Explicit origin configuration |
+| **HTTP Headers** | Prevent clickjacking, MIME sniffing, enforce HSTS. | Helmet, Spring Security Defaults |
+| **File Uploads** | MIME validation, UUID rename, store outside web root. | AWS S3, Cloudinary |
+| **Error Handling** | Generic errors to clients, full logs server-side. | GlobalExceptionHandler, Sentry |
+| **Dependencies** | Regular audits, pin versions. | `npm audit`, `dependency:analyze` |
+| **XSS** | Sanitize HTML inputs/outputs, avoid dynamic script injection. | DOMPurify, standard UI text node binding |
+| **AI / LLM** | Backend key storage, input/output sanitization, token budgets. | LLM proxy endpoint, `max_tokens` limit |
