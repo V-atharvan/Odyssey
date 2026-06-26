@@ -943,6 +943,13 @@ export default function CollegeDashboard() {
 
             {activeTab === 'settings' && <SettingsPage user={user} />}
             </div>
+
+            {selectedStudent && (
+                <StudentProfileModal
+                    student={selectedStudent}
+                    onClose={() => setSelectedStudent(null)}
+                />
+            )}
         </DashboardLayout>
     );
 }

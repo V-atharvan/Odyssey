@@ -177,7 +177,7 @@ export default function DashboardLayout({ children }) {
                 <div 
                     onClick={() => {
                         if (user?.role === 'STUDENT') {
-                            navigate(`/portfolio/${user.id}`);
+                            navigate(`/portfolio/${user.profileId}`);
                         } else if (user?.role === 'COMPANY') {
                             navigate('/company/settings');
                         } else if (user?.role === 'COLLEGE_ADMIN') {

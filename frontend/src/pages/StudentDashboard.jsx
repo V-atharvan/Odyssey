@@ -592,23 +592,10 @@ export default function StudentDashboard() {
                 <div className="animate-fade-in pt-4 space-y-12">
 
                     {/* ── KPI Cards Grid ── */}
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-2 gap-6">
                         {[
-                            { 
-                                label: "Portfolio Completion", 
-                                value: `${Math.min(100, Math.round(
-                                    ((profile?.resumeUrl ? 20 : 0) + 
-                                    (profile?.githubUrl ? 20 : 0) + 
-                                    (profile?.portfolioUrl ? 20 : 0) +
-                                    (profile?.skills ? 20 : 0) + 
-                                    (profile?.bio ? 20 : 0))
-                                ))}%`, 
-                                icon: <Trophy size={22} />, 
-                                color: "primary" 
-                            },
                             { label: "Applied Projects", value: myApplications.length, icon: <ClipboardList size={22} />, color: "accent" },
                             { label: "Active Projects", value: myApplications.filter(a => a.status === 'ACCEPTED' || a.status === 'IN_PROGRESS').length, icon: <Rocket size={22} />, color: "emerald" },
-                            { label: "Verification", value: profile?.verificationStatus === 'VERIFIED' ? '✓ Verified' : 'Pending', icon: <ShieldCheck size={22} />, color: profile?.verificationStatus === 'VERIFIED' ? "emerald" : "amber" },
                         ].map((stat, i) => (
                             <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
                                 <StatCard {...stat} />
@@ -703,79 +690,8 @@ export default function StudentDashboard() {
                         </motion.div>
                     </div>
 
-                    {/* ── Two-Column: Portfolio Progress + Recent Activity ── */}
-                    <div className="grid lg:grid-cols-2 gap-8">
-
-                        {/* Portfolio Progress */}
-                        <motion.div 
-                            initial={{ opacity: 0, y: 20 }} 
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.2 }}
-                            className="glass p-8 rounded-[2.5rem] border-white/10 shadow-2xl"
-                        >
-                            <h3 className="text-sm font-black text-text-heading uppercase tracking-wider mb-6 flex items-center gap-2">
-                                <TrendingUp size={18} className="text-emerald-500" /> Portfolio Progress
-                            </h3>
-                            {(() => {
-                                const items = [
-                                    { label: 'Resume', done: !!profile?.resumeUrl, icon: '📄' },
-                                    { label: 'GitHub', done: !!profile?.githubUrl, icon: '💻' },
-                                    { label: 'LinkedIn / Portfolio', done: !!profile?.portfolioUrl, icon: '🔗' },
-                                    { label: 'Skills', done: !!(profile?.skills && profile.skills.length > 2), icon: '⚡' },
-                                    { label: 'Bio / About', done: !!(profile?.bio && profile.bio.length > 10), icon: '✍️' },
-                                ];
-                                const doneCount = items.filter(i => i.done).length;
-                                const pct = Math.round((doneCount / items.length) * 100);
-                                return (
-                                    <>
-                                        <div className="flex items-center gap-6 mb-8">
-                                            <div className="relative w-20 h-20 shrink-0">
-                                                <svg className="w-full h-full -rotate-90 transform">
-                                                    <circle cx="40" cy="40" r="34" className="text-surface-100 dark:text-white/5 stroke-current" strokeWidth="8" fill="transparent" />
-                                                    <motion.circle 
-                                                        cx="40" cy="40" r="34"
-                                                        className="text-emerald-500 stroke-current"
-                                                        strokeWidth="8"
-                                                        strokeDasharray={213.6}
-                                                        initial={{ strokeDashoffset: 213.6 }}
-                                                        animate={{ strokeDashoffset: 213.6 - (213.6 * pct) / 100 }}
-                                                        transition={{ duration: 1.5, ease: "easeOut" }}
-                                                        fill="transparent"
-                                                        strokeLinecap="round"
-                                                    />
-                                                </svg>
-                                                <div className="absolute inset-0 flex items-center justify-center">
-                                                    <span className="text-lg font-black text-text-heading">{pct}%</span>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <p className="text-2xl font-black text-text-heading">{doneCount}/{items.length}</p>
-                                                <p className="text-[10px] text-text-muted uppercase font-black tracking-widest">Sections Complete</p>
-                                            </div>
-                                        </div>
-                                        <div className="space-y-3">
-                                            {items.map((item, i) => (
-                                                <div key={i} className={`flex items-center gap-4 p-3 rounded-xl border transition-all ${
-                                                    item.done 
-                                                        ? 'bg-emerald-500/5 border-emerald-500/20' 
-                                                        : 'bg-surface-50 dark:bg-white/5 border-border'
-                                                }`}>
-                                                    <span className="text-lg">{item.icon}</span>
-                                                    <span className={`text-sm font-bold flex-1 ${item.done ? 'text-text-heading' : 'text-text-muted'}`}>{item.label}</span>
-                                                    {item.done 
-                                                        ? <CheckCircle2 size={18} className="text-emerald-500" />
-                                                        : <XCircle size={18} className="text-text-muted opacity-30" />
-                                                    }
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </>
-                                );
-                            })()}
-                        </motion.div>
-
-                        {/* Recent Activity */}
-                        <motion.div 
+                    {/* ── Recent Activity ── */}
+                    <motion.div 
                             initial={{ opacity: 0, y: 20 }} 
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.3 }}
@@ -823,7 +739,6 @@ export default function StudentDashboard() {
                                 })()}
                             </div>
                         </motion.div>
-                    </div>
 
                     {/* ── Discovery Feed Section ── */}
                     <div className="pt-4">

@@ -26,6 +26,10 @@ export default function PortfolioPage() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        if (!studentId || studentId === 'undefined') {
+            setLoading(false);
+            return;
+        }
         const load = async () => {
             try {
                 const [profileRes, reviewRes] = await Promise.all([
