@@ -10,6 +10,7 @@ import {
     signInWithPhoneNumber,
     signOut,
     createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
     updateProfile 
 } from 'firebase/auth';
 import { auth } from '../firebase/config';
@@ -134,6 +135,16 @@ export function AuthProvider({ children }) {
         }
     };
 
+    const loginWithEmail = async (email, password) => {
+        try {
+            const result = await signInWithEmailAndPassword(auth, email, password);
+            return result.user;
+        } catch (error) {
+            console.error("Firebase email login failed", error);
+            throw error;
+        }
+    };
+
     const logout = async () => {
         setUser(null);
         setToken(null);
@@ -152,6 +163,7 @@ export function AuthProvider({ children }) {
             token, 
             firebaseUser,
             login, 
+            loginWithEmail,
             loginWithGoogle,
             loginWithMicrosoft,
             sendPhoneOTP,

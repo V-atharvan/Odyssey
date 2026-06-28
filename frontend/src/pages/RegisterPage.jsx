@@ -27,7 +27,7 @@ export default function RegisterPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [loading, setLoading] = useState(false);
-    const { login, loginWithGoogle, loginWithMicrosoft, registerWithEmail } = useAuth();
+    const { login, loginWithGoogle, registerWithEmail } = useAuth();
     const navigate = useNavigate();
 
     const ROLE_PATHS = { STUDENT: '/student', COMPANY: '/company', COLLEGE_ADMIN: '/college' };
@@ -57,31 +57,6 @@ export default function RegisterPage() {
             } else {
                 toast.error(msg);
             }
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleMicrosoftSignup = async () => {
-        setLoading(true);
-        try {
-            const fbUser = await loginWithMicrosoft();
-            const idToken = await fbUser.getIdToken();
-
-            const res = await authAPI.firebaseLogin({ idToken, role });
-            const data = res.data.data;
-
-            login(
-                { email: data.email, fullName: data.fullName, role: data.role, profileId: data.profileId, userId: data.userId },
-                data.token
-            );
-
-            toast.success(`Welcome to Odyssey, ${data.fullName}!`);
-            analyticsEvents.signUp(role, 'microsoft');
-            setStep(5);
-        } catch (err) {
-            console.error("Microsoft signup failed", err);
-            toast.error(err.response?.data?.message || err.message || 'Microsoft signup failed');
         } finally {
             setLoading(false);
         }
@@ -225,8 +200,6 @@ export default function RegisterPage() {
                                 role={role}
                                 onEmailSignup={() => setStep(3)}
                                 onGoogleSignup={handleGoogleSignup}
-                                onMicrosoftSignup={handleMicrosoftSignup}
-                                onPhoneSignup={() => setStep(4)}
                                 onBack={() => setStep(1)}
                             />
                         </div>

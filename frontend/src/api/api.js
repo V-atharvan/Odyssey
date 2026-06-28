@@ -3,6 +3,7 @@ import {
     mockAuthAPI, mockStudentAPI, mockProjectAPI,
     mockCollegeAPI, mockAdminAPI, mockReviewAPI,
 } from './mockApi';
+import { MOCK_ADMIN_USERS } from './mockData';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
 
@@ -34,6 +35,36 @@ axiosInstance.interceptors.response.use(
         return Promise.reject(error);
     }
 );
+
+// Demo mode: intercept /users/search so ChatPanel works without a real backend
+if (DEMO_MODE) {
+    axiosInstance.interceptors.request.use(async (config) => {
+        if (config.url?.includes('/users/search')) {
+            const q = new URLSearchParams(config.url.split('?')[1] || '').get('q') || '';
+            const filtered = MOCK_ADMIN_USERS
+                .filter(u => u.fullName?.toLowerCase().includes(q.toLowerCase()) || u.email?.toLowerCase().includes(q.toLowerCase()))
+                .map(u => ({ ...u, userId: u.id }));
+            // Return a fake resolved response
+            return Promise.reject({
+                __demoIntercepted: true,
+                data: { success: true, data: filtered },
+                status: 200,
+                headers: {},
+                config,
+            });
+        }
+        return config;
+    });
+
+    // Make rejected demo intercepts look like real responses
+    axiosInstance.interceptors.response.use(
+        (response) => response,
+        (error) => {
+            if (error?.__demoIntercepted) return Promise.resolve(error);
+            return Promise.reject(error);
+        }
+    );
+}
 
 export const authAPI = DEMO_MODE ? mockAuthAPI : {
     login: (data) => axiosInstance.post('/auth/login', data),
@@ -152,8 +183,19 @@ export const companyAPI = DEMO_MODE ? {
     getSentRequests: () => axiosInstance.get('/companies/requests/sent'),
 };
 
+export const fileAPI = {
+    upload: (file, type) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return axiosInstance.post(`/files/upload/${type}`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+    }
+};
+
 export const contactAPI = {
     sendMessage: (data) => axiosInstance.post('/contact', data),
 };
 
 export default axiosInstance;
+

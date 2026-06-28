@@ -31,6 +31,7 @@ const NAV_ITEMS = {
         { label: 'Verification', icon: <CheckCircle2 size={20} />, path: '/college/verify' },
         { label: 'Projects', icon: <Folder size={20} />, path: '/college/projects' },
         { label: 'Partners', icon: <Building2 size={20} />, path: '/college/companies' },
+        { label: 'Chat', icon: <MessageSquare size={20} />, path: '#', onClick: () => document.getElementById('chat-panel-toggle')?.click() },
         { label: 'Settings', icon: <Settings size={20} />, path: '/college/settings' },
     ],
     ADMIN: [
@@ -218,8 +219,8 @@ export default function DashboardLayout({ children }) {
                 </div>
             </main>
 
-            {/* Real-time Chat Panel */}
-            {user && user.role === 'COMPANY' && <ChatPanel />}
+            {/* Real-time Chat Panel — available to all authenticated users */}
+            {user && <ChatPanel />}
         </div>
     );
 }

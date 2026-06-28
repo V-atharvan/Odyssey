@@ -79,9 +79,11 @@ export default function CreateProjectForm({ onClose, onSuccess }) {
     const nextStep = () => setStep(s => s + 1);
     const prevStep = () => setStep(s => s - 1);
 
+    // Step 1 needs title + category + description
+    // Step 2 needs durationWeeks (skills are optional to add before proceeding)
     const canProceed = step === 1
-        ? form.title && form.category && form.description
-        : form.durationWeeks && form.skillsRequired.length > 0;
+        ? !!(form.title && form.category && form.description)
+        : !!form.durationWeeks;
 
     const inputClass = "w-full px-6 py-5 rounded-[1.5rem] bg-surface-50 dark:bg-white/[0.03] border-2 border-border dark:border-white/5 focus:border-emerald-500 focus:bg-white dark:focus:bg-white/5 outline-none transition-all font-bold text-text-heading placeholder:text-text-muted shadow-inner";
     const labelClass = "block text-[10px] font-black text-text-muted uppercase tracking-[0.2em] mb-3 px-1";
@@ -233,7 +235,10 @@ export default function CreateProjectForm({ onClose, onSuccess }) {
                             {step < 3 ? (
                                 <button 
                                     type="button" onClick={nextStep}
-                                    className="flex-1 px-10 py-5 rounded-[1.5rem] bg-primary-600 dark:bg-white text-white dark:text-[#0B0F19] font-black uppercase tracking-widest text-[10px] hover:bg-primary-700 dark:hover:bg-emerald-500 dark:hover:text-white shadow-2xl transition-all active:scale-95 disabled:opacity-20"
+                                    className={`flex-1 px-10 py-5 rounded-[1.5rem] font-black uppercase tracking-widest text-[10px] shadow-2xl transition-all active:scale-95
+                                        ${canProceed
+                                            ? 'bg-emerald-500 text-white hover:bg-emerald-400 shadow-emerald-500/20 cursor-pointer'
+                                            : 'bg-slate-200 dark:bg-white/10 text-slate-400 dark:text-white/30 cursor-not-allowed'}`}
                                     disabled={!canProceed}
                                 >
                                     {step === 1 ? 'Proceed to Allocation' : 'Proceed to Authorization'}

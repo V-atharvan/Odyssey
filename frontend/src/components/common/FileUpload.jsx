@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { UploadCloud, FileText, ImageIcon, X } from 'lucide-react';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { storage } from '../../firebase/config';
+import { fileAPI } from '../../api/api';
 import toast from 'react-hot-toast';
 
 export default function FileUpload({ onUploadComplete, type = 'resume', label = 'Upload File', accept = '.pdf,.jpg,.jpeg,.png' }) {
@@ -36,12 +37,33 @@ export default function FileUpload({ onUploadComplete, type = 'resume', label = 
     };
 
     const performUpload = (f) => {
-        if (!storage) {
-            toast.error('Firebase Storage is not initialized.');
-            return;
-        }
         setUploading(true);
         setProgress(0);
+
+        const uploadToBackend = async (fileToUpload) => {
+            try {
+                const interval = setInterval(() => {
+                    setProgress(p => Math.min(p + 15, 90));
+                }, 100);
+                const res = await fileAPI.upload(fileToUpload, type);
+                clearInterval(interval);
+                setProgress(100);
+                onUploadComplete(res.data.data.url);
+                toast.success('File uploaded successfully!');
+            } catch (err) {
+                console.error('Backend file upload failed:', err);
+                toast.error('Upload failed on both Firebase and Server.');
+                setFile(null);
+                setPreview(null);
+            } finally {
+                setUploading(false);
+            }
+        };
+
+        if (!storage) {
+            uploadToBackend(f);
+            return;
+        }
 
         // Path structure: e.g., resumes/timestamp_filename
         const fileRef = ref(storage, `${type}/${Date.now()}_${f.name}`);
@@ -56,11 +78,8 @@ export default function FileUpload({ onUploadComplete, type = 'resume', label = 
                 setProgress(pct);
             },
             (error) => {
-                console.error('Upload error:', error);
-                toast.error(`Upload failed: ${error.message}`);
-                setFile(null);
-                setPreview(null);
-                setUploading(false);
+                console.warn('Firebase upload error, trying backend fallback:', error);
+                uploadToBackend(f);
             },
             async () => {
                 try {
@@ -68,10 +87,8 @@ export default function FileUpload({ onUploadComplete, type = 'resume', label = 
                     onUploadComplete(downloadURL);
                     toast.success('File uploaded successfully!');
                 } catch (err) {
-                    console.error('Error getting download URL:', err);
-                    toast.error('Failed to get download URL.');
-                    setFile(null);
-                    setPreview(null);
+                    console.error('Error getting download URL, trying backend fallback:', err);
+                    uploadToBackend(f);
                 } finally {
                     setUploading(false);
                 }

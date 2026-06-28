@@ -18,7 +18,7 @@ import { useAuth } from '../context/AuthContext';
 import DashboardLayout from '../components/DashboardLayout';
 import StatCard from '../components/StatCard';
 import StatusBadge from '../components/StatusBadge';
-import { studentAPI, projectAPI } from '../api/api';
+import { studentAPI, projectAPI, notificationAPI } from '../api/api';
 import toast from 'react-hot-toast';
 import ProjectExplorer from '../components/student/ProjectExplorer';
 import ProfileSettings from '../components/common/ProfileSettings';
@@ -482,7 +482,7 @@ function AssessmentsView_REMOVED_PLACEHOLDER() {
 // ─────────────────────────────────────────────────
 // Main Dashboard
 // ─────────────────────────────────────────────────
-const TABS = ['projects', 'reviews', 'resume', 'settings'];
+const TABS = ['projects', 'reviews', 'resume', 'settings', 'notifications'];
 
 export default function StudentDashboard() {
     const { user } = useAuth();
@@ -497,6 +497,8 @@ export default function StudentDashboard() {
     const [viewingApp, setViewingApp] = useState(null);
     const [uploadingResume, setUploadingResume] = useState(false);
     const [projectsCount, setProjectsCount] = useState(0);
+    const [apiNotifications, setApiNotifications] = useState([]);
+    const [notifsLoading, setNotifsLoading] = useState(false);
 
     useEffect(() => {
         const path = location.pathname.split('/').pop();
@@ -524,6 +526,24 @@ export default function StudentDashboard() {
     };
 
     useEffect(() => { fetchData(); }, []);
+
+    // Fetch real notifications when the tab is active
+    useEffect(() => {
+        if (activeTab !== 'notifications') return;
+        setNotifsLoading(true);
+        notificationAPI.getAll()
+            .then(res => setApiNotifications(res.data?.data || []))
+            .catch(() => {})
+            .finally(() => setNotifsLoading(false));
+    }, [activeTab]);
+
+    const handleMarkAllNotifs = async () => {
+        try {
+            await notificationAPI.markAllAsRead();
+            setApiNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+            toast.success('All caught up! ✨');
+        } catch { toast.error('Failed to mark all as read'); }
+    };
 
     if (loading) {
         return (
@@ -873,25 +893,60 @@ export default function StudentDashboard() {
 
             {activeTab === 'notifications' && (
                 <div className="space-y-6 animate-fade-in pt-4">
-                    <h2 className="text-4xl font-black text-text-heading tracking-normal uppercase mb-10">Global Activity Log</h2>
-                    {notifications.length === 0 ? <p className="text-text-muted italic py-10">The air is silent. No activity recorded.</p> : (
-                        <div className="space-y-4">
-                            {notifications.map((n, i) => (
-                                <motion.div 
-                                    key={n.id} 
+                    <div className="flex items-center justify-between mb-8">
+                        <div>
+                            <h2 className="text-3xl font-black text-text-heading tracking-normal uppercase">Notifications</h2>
+                            <p className="text-text-muted mt-1 font-bold opacity-60 text-sm">Your activity updates and alerts.</p>
+                        </div>
+                        {apiNotifications.some(n => !n.isRead) && (
+                            <button
+                                onClick={handleMarkAllNotifs}
+                                className="flex items-center gap-2 px-4 py-2 bg-primary-500/10 text-primary-600 dark:text-primary-400 rounded-xl text-[10px] font-black uppercase tracking-widest border border-primary-500/10 hover:bg-primary-500/20 transition-all"
+                            >
+                                <Check size={12} /> Mark all read
+                            </button>
+                        )}
+                    </div>
+                    {notifsLoading ? (
+                        <div className="flex justify-center py-20">
+                            <div className="w-8 h-8 border-2 border-primary-500/20 border-t-primary-500 rounded-full animate-spin" />
+                        </div>
+                    ) : apiNotifications.length === 0 ? (
+                        <div className="glass text-center py-24 rounded-[2.5rem] flex flex-col items-center gap-4 opacity-60">
+                            <Bell size={48} className="text-primary-500/30" />
+                            <p className="text-text-muted font-black uppercase tracking-widest">All caught up</p>
+                            <p className="text-text-muted text-sm">No notifications yet</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {apiNotifications.map((n, i) => (
+                                <motion.div
+                                    key={n.id}
                                     initial={{ opacity: 0, x: -20 }}
                                     animate={{ opacity: 1, x: 0 }}
-                                    transition={{ delay: i * 0.05 }}
-                                    className="p-6 glass rounded-2xl flex items-center gap-6 group hover:border-white/40 transition-all"
+                                    transition={{ delay: i * 0.04 }}
+                                    className={`p-5 rounded-2xl flex items-start gap-4 group transition-all border
+                                        ${!n.isRead
+                                            ? 'glass border-primary-500/10 bg-primary-500/[0.03]'
+                                            : 'glass border-border opacity-70'}`}
                                 >
-                                    <div className="w-12 h-12 rounded-xl bg-surface-50 flex items-center justify-center text-text-muted shadow-inner group-hover:rotate-6 transition-transform">
-                                        <ClipboardList size={22} className="text-primary-500" />
+                                    <div className="w-11 h-11 rounded-xl bg-surface-50 dark:bg-white/5 border border-border flex items-center justify-center shrink-0 group-hover:scale-105 group-hover:rotate-3 transition-transform shadow-inner">
+                                        <Bell size={18} className="text-primary-500" />
                                     </div>
-                                    <div className="flex-1">
-                                        <p className="text-sm font-black text-text-heading group-hover:text-primary-600 transition-colors uppercase tracking-normal leading-none mb-1">{n.title}</p>
-                                        <p className="text-[10px] text-text-muted font-black uppercase tracking-widest mt-1 opacity-60 ">{n.subtitle || 'System recorded event'}</p>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <p className={`text-sm leading-tight mb-1 ${
+                                                !n.isRead ? 'font-black text-text-heading' : 'font-bold text-text-muted'
+                                            }`}>{n.title}</p>
+                                            {!n.isRead && (
+                                                <div className="w-2 h-2 bg-primary-500 rounded-full mt-1.5 shrink-0 shadow-[0_0_8px_rgba(16,185,129,0.7)]" />
+                                            )}
+                                        </div>
+                                        <p className="text-xs text-text-body leading-relaxed font-medium">{n.message}</p>
+                                        <p className="text-[10px] text-text-muted font-black uppercase tracking-widest mt-2 opacity-50">
+                                            {new Date(n.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                        </p>
                                     </div>
-                                    <span className="text-[10px] text-text-muted font-black uppercase tracking-[0.2em] opacity-40">{new Date(n.time).toLocaleDateString()}</span>
                                 </motion.div>
                             ))}
                         </div>

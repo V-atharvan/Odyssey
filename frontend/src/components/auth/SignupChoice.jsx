@@ -41,28 +41,6 @@ export default function SignupChoice({ role, onEmailSignup, onGoogleSignup, onMi
                 Continue with Google
             </button>
 
-            <button
-                onClick={onMicrosoftSignup}
-                className="w-full flex items-center justify-center gap-3 p-4 rounded-xl border border-slate-200 dark:border-white/10 
-                           bg-transparent hover:bg-slate-50 dark:hover:bg-white/5 transition-all font-semibold text-slate-700 dark:text-white group"
-            >
-                <svg className="w-5 h-5 group-hover:scale-110 transition-transform" viewBox="0 0 23 23">
-                    <rect x="0" y="0" width="11" height="11" fill="#f25022" />
-                    <rect x="12" y="0" width="11" height="11" fill="#7fba00" />
-                    <rect x="0" y="12" width="11" height="11" fill="#00a4ef" />
-                    <rect x="12" y="12" width="11" height="11" fill="#ffb900" />
-                </svg>
-                Continue with Microsoft
-            </button>
-
-            <button
-                onClick={onPhoneSignup}
-                className="w-full flex items-center justify-center gap-3 p-4 rounded-xl border border-slate-200 dark:border-white/10 
-                           bg-transparent hover:bg-slate-50 dark:hover:bg-white/5 transition-all font-semibold text-slate-700 dark:text-white group"
-            >
-                <Phone className="w-5 h-5 text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform" />
-                Continue with Phone (OTP)
-            </button>
 
             <div className="flex items-center gap-4 py-2">
                 <div className="flex-1 h-px bg-slate-200 dark:bg-white/10"></div>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { User, Mail, Building2, Link as LinkIcon, Save, ShieldCheck, Github, Linkedin, Globe, Briefcase, GraduationCap, MapPin, Camera } from 'lucide-react';
-import { studentAPI, collegeAPI, companyAPI, adminAPI } from '../../api/api';
+import { studentAPI, collegeAPI, companyAPI, adminAPI, fileAPI } from '../../api/api';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { storage } from '../../firebase/config';
 import { analyticsEvents } from '../../firebase/analytics';
@@ -130,15 +130,40 @@ export default function ProfileSettings({ user }) {
             return;
         }
 
-        if (!storage) {
-            toast.error('Firebase Storage is not initialized.');
-            return;
-        }
-
+        const folder = (user.role === 'COMPANY' || user.role === 'COLLEGE_ADMIN') ? 'logos' : 'avatars';
         setUploadingAvatar(true);
         setAvatarProgress(0);
 
-        const folder = (user.role === 'COMPANY' || user.role === 'COLLEGE_ADMIN') ? 'logos' : 'avatars';
+        const uploadToBackend = async (f) => {
+            try {
+                const interval = setInterval(() => {
+                    setAvatarProgress(p => Math.min(p + 15, 90));
+                }, 100);
+                
+                const res = await fileAPI.upload(f, folder);
+                clearInterval(interval);
+                setAvatarProgress(100);
+                const downloadUrl = res.data.data.url;
+                if (user.role === 'COMPANY' || user.role === 'COLLEGE_ADMIN') {
+                    setForm(prev => ({ ...prev, logoUrl: downloadUrl }));
+                } else {
+                    setForm(prev => ({ ...prev, profileImageUrl: downloadUrl }));
+                }
+                analyticsEvents.avatarUploaded();
+                toast.success('Avatar uploaded successfully! Save profile to commit changes.');
+            } catch (err) {
+                console.error("Backend upload failed:", err);
+                toast.error('Avatar upload failed on both Firebase and Server.');
+            } finally {
+                setUploadingAvatar(false);
+            }
+        };
+
+        if (!storage) {
+            uploadToBackend(file);
+            return;
+        }
+
         const fileRef = ref(storage, `${folder}/${Date.now()}_${file.name}`);
         const uploadTask = uploadBytesResumable(fileRef, file);
 
@@ -151,9 +176,8 @@ export default function ProfileSettings({ user }) {
                 setAvatarProgress(pct);
             },
             (error) => {
-                console.error(error);
-                toast.error('Avatar upload failed.');
-                setUploadingAvatar(false);
+                console.warn("Firebase upload failed, falling back to backend:", error);
+                uploadToBackend(file);
             },
             async () => {
                 try {
@@ -164,10 +188,10 @@ export default function ProfileSettings({ user }) {
                         setForm(prev => ({ ...prev, profileImageUrl: downloadUrl }));
                     }
                     analyticsEvents.avatarUploaded();
-                    toast.success('Avatar uploaded! Save profile to commit changes.');
+                    toast.success('Avatar uploaded successfully! Save profile to commit changes.');
                 } catch (err) {
-                    console.error(err);
-                    toast.error('Failed to get avatar URL.');
+                    console.error("Firebase getDownloadURL failed, falling back to backend:", err);
+                    uploadToBackend(file);
                 } finally {
                     setUploadingAvatar(false);
                 }

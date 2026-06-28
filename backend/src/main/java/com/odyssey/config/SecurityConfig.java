@@ -64,6 +64,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/applications/**").authenticated()
                 .requestMatchers("/api/payments/**").authenticated()
                 .requestMatchers("/api/reviews/**").authenticated()
+                .requestMatchers("/api/users/**").authenticated()  // User search for chat (any authenticated role)
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session

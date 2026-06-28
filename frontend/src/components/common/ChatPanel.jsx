@@ -12,19 +12,43 @@ import {
 import { analyticsEvents } from '../../firebase/analytics';
 import axiosInstance from '../../api/api';
 
-// Role color map
-const ROLE_COLORS = {
-  STUDENT: 'bg-primary-500/20 text-primary-400',
-  COMPANY: 'bg-emerald-500/20 text-emerald-400',
-  COLLEGE_ADMIN: 'bg-amber-500/20 text-amber-400',
-  ADMIN: 'bg-red-500/20 text-red-400',
+// Who can chat with whom
+const CHAT_ALLOWED_ROLES = {
+  // Students can chat with companies, college admins, and other students (project co-members)
+  STUDENT: ['COMPANY', 'COLLEGE_ADMIN', 'STUDENT'],
+  COMPANY: ['STUDENT', 'COLLEGE_ADMIN', 'COMPANY'],
+  COLLEGE_ADMIN: ['COMPANY', 'STUDENT', 'COLLEGE_ADMIN'],
+  ADMIN: ['STUDENT', 'COMPANY', 'COLLEGE_ADMIN', 'ADMIN'],
+};
+
+const ROLE_LABEL = {
+  STUDENT: 'Student',
+  COMPANY: 'Company',
+  COLLEGE_ADMIN: 'College Admin',
+  ADMIN: 'Admin',
+};
+
+// Role badge colors — works in both light and dark
+const ROLE_BADGE = {
+  STUDENT: 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400',
+  COMPANY: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400',
+  COLLEGE_ADMIN: 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400',
+  ADMIN: 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400',
 };
 
 function Avatar({ name = '?', role }) {
   return (
-    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm shrink-0 ${ROLE_COLORS[role] || 'bg-white/10 text-white'}`}>
+    <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm shrink-0 ${ROLE_BADGE[role] || 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-white'}`}>
       {name.charAt(0).toUpperCase()}
     </div>
+  );
+}
+
+function RoleBadge({ role }) {
+  return (
+    <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${ROLE_BADGE[role] || 'bg-slate-100 text-slate-500'}`}>
+      {ROLE_LABEL[role] || role}
+    </span>
   );
 }
 
@@ -49,6 +73,9 @@ export default function ChatPanel() {
   const [searching, setSearching] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+
+  // Allowed roles this user can chat with
+  const allowedRoles = CHAT_ALLOWED_ROLES[user?.role] || [];
 
   // Subscribe to user's chat list
   useEffect(() => {
@@ -114,7 +141,11 @@ export default function ChatPanel() {
     setSearching(true);
     try {
       const res = await axiosInstance.get(`/users/search?q=${encodeURIComponent(q)}`);
-      const results = (res.data?.data || []).filter((u) => String(u.userId) !== String(user.userId));
+      // Normalize: backend returns `id`, ChatPanel expects `userId`
+      // Backend already enforces role/project-based filtering server-side
+      const results = (res.data?.data || [])
+        .map((u) => ({ ...u, userId: u.userId ?? u.id }))
+        .filter((u) => String(u.userId) !== String(user.userId));
       setSearchResults(results);
     } catch {
       setSearchResults([]);
@@ -123,7 +154,7 @@ export default function ChatPanel() {
     }
   };
 
-  const unreadCount = 0; // Placeholder — can track unread per chat
+  const unreadCount = 0;
 
   return (
     <>
@@ -131,8 +162,10 @@ export default function ChatPanel() {
       <button
         id="chat-panel-toggle"
         onClick={() => setIsOpen(!isOpen)}
-        className={`fixed bottom-6 right-6 z-[200] w-14 h-14 rounded-2xl shadow-2xl flex items-center justify-center transition-all duration-300 active:scale-90
-          ${isOpen ? 'bg-red-500 shadow-red-500/30' : 'bg-primary-600 shadow-primary-500/30 hover:bg-primary-500'}`}
+        className={`fixed bottom-6 left-6 z-[200] w-14 h-14 rounded-2xl shadow-2xl flex items-center justify-center transition-all duration-300 active:scale-90
+          ${isOpen
+            ? 'bg-red-500 shadow-red-500/30'
+            : 'bg-primary-600 shadow-primary-500/30 hover:bg-primary-500'}`}
       >
         <AnimatePresence mode="wait">
           {isOpen ? (
@@ -160,29 +193,34 @@ export default function ChatPanel() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-            className="fixed bottom-24 right-6 z-[199] w-[360px] h-[520px] bg-surface-900/95 backdrop-blur-2xl border border-white/10 rounded-[2rem] shadow-2xl flex flex-col overflow-hidden"
+            className="fixed bottom-24 left-6 z-[199] w-[360px] h-[540px] flex flex-col overflow-hidden rounded-[2rem] shadow-2xl
+              bg-white dark:bg-[#0B0F19]
+              border border-slate-200/80 dark:border-white/10"
           >
             {/* Header */}
-            <div className="px-5 py-4 border-b border-white/10 flex items-center gap-3 bg-gradient-to-r from-primary-600/10 to-transparent shrink-0">
+            <div className="px-5 py-4 border-b border-slate-200/80 dark:border-white/10 flex items-center gap-3 bg-gradient-to-r from-primary-600/5 dark:from-primary-600/10 to-transparent shrink-0">
               {view === 'chat' && (
-                <button onClick={() => setView('list')} className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-white/10 text-white/60 hover:text-white transition-all">
+                <button
+                  onClick={() => setView('list')}
+                  className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-white/10 text-slate-500 dark:text-white/60 hover:text-slate-800 dark:hover:text-white transition-all"
+                >
                   <ArrowLeft size={16} />
                 </button>
               )}
               {view === 'chat' && activeOtherUser ? (
-                <div className="flex items-center gap-3 flex-1">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
                   <Avatar name={activeOtherUser.fullName} role={activeOtherUser.role} />
-                  <div>
-                    <p className="font-black text-white text-sm leading-none">{activeOtherUser.fullName}</p>
-                    <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest mt-0.5">{activeOtherUser.role?.replace('_', ' ')}</p>
+                  <div className="min-w-0">
+                    <p className="font-black text-slate-900 dark:text-white text-sm leading-none truncate">{activeOtherUser.fullName}</p>
+                    <RoleBadge role={activeOtherUser.role} />
                   </div>
                 </div>
               ) : (
                 <div className="flex items-center gap-3 flex-1">
-                  <div className="w-8 h-8 rounded-xl bg-primary-500/10 flex items-center justify-center text-primary-400">
+                  <div className="w-8 h-8 rounded-xl bg-primary-100 dark:bg-primary-500/10 flex items-center justify-center text-primary-600 dark:text-primary-400">
                     <MessageSquare size={16} />
                   </div>
-                  <h3 className="font-black text-white uppercase tracking-normal text-sm">Messages</h3>
+                  <h3 className="font-black text-slate-900 dark:text-white uppercase tracking-normal text-sm">Messages</h3>
                 </div>
               )}
             </div>
@@ -191,14 +229,14 @@ export default function ChatPanel() {
             {view === 'list' && (
               <div className="flex-1 flex flex-col overflow-hidden">
                 {/* Search */}
-                <div className="px-4 py-3 border-b border-white/5">
+                <div className="px-4 py-3 border-b border-slate-100 dark:border-white/5">
                   <div className="relative">
-                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/30" />
                     <input
                       value={searchQuery}
                       onChange={(e) => handleSearch(e.target.value)}
-                      placeholder="Search users to chat..."
-                      className="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 pl-8 pr-3 text-xs text-white placeholder-white/30 focus:outline-none focus:border-primary-500/50 transition-colors"
+                      placeholder="Search by name..."
+                      className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl py-2.5 pl-8 pr-3 text-xs text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-white/30 focus:outline-none focus:border-primary-500 dark:focus:border-primary-500/50 transition-colors"
                     />
                   </div>
                 </div>
@@ -207,25 +245,27 @@ export default function ChatPanel() {
                   {/* Search Results */}
                   {searchQuery.length >= 2 && (
                     <div className="px-2 py-2">
-                      <p className="text-[10px] text-white/30 font-black uppercase tracking-widest px-3 mb-2">Search Results</p>
+                      <p className="text-[10px] text-slate-400 dark:text-white/30 font-black uppercase tracking-widest px-3 mb-2">Search Results</p>
                       {searching ? (
                         <div className="flex justify-center py-6">
-                          <div className="w-5 h-5 border-2 border-primary-500/20 border-t-primary-500 rounded-full animate-spin" />
+                          <div className="w-5 h-5 border-2 border-primary-200 dark:border-primary-500/20 border-t-primary-600 dark:border-t-primary-500 rounded-full animate-spin" />
                         </div>
                       ) : searchResults.length === 0 ? (
-                        <p className="text-xs text-white/20 text-center py-6 font-bold">No users found</p>
+                        <p className="text-xs text-slate-400 dark:text-white/20 text-center py-6 font-bold">
+                          {allowedRoles.length === 0 ? 'Chat not available for your role' : 'No users found'}
+                        </p>
                       ) : searchResults.map((u) => (
                         <button
                           key={u.userId}
                           onClick={() => openChat(u)}
-                          className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-all group text-left"
+                          className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5 transition-all group text-left"
                         >
                           <Avatar name={u.fullName} role={u.role} />
                           <div className="flex-1 min-w-0">
-                            <p className="font-black text-white text-sm truncate">{u.fullName}</p>
-                            <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest">{u.role?.replace('_', ' ')}</p>
+                            <p className="font-black text-slate-900 dark:text-white text-sm truncate">{u.fullName}</p>
+                            <RoleBadge role={u.role} />
                           </div>
-                          <ChevronRight size={14} className="text-white/20 group-hover:text-primary-400 transition-colors" />
+                          <ChevronRight size={14} className="text-slate-300 dark:text-white/20 group-hover:text-primary-500 transition-colors shrink-0" />
                         </button>
                       ))}
                     </div>
@@ -234,10 +274,15 @@ export default function ChatPanel() {
                   {/* Existing Chats */}
                   {searchQuery.length < 2 && (
                     <div className="px-2 py-2">
+                      <p className="text-[10px] text-slate-400 dark:text-white/30 font-black uppercase tracking-widest px-3 mb-2">Recent Conversations</p>
                       {chats.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-48 gap-3 opacity-30">
-                          <Users size={40} className="text-white/20" />
-                          <p className="text-xs font-black text-white/40 uppercase tracking-widest text-center">No conversations yet.<br />Search for a user to start.</p>
+                        <div className="flex flex-col items-center justify-center h-40 gap-3">
+                          <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-white/5 flex items-center justify-center">
+                            <Users size={24} className="text-slate-300 dark:text-white/20" />
+                          </div>
+                          <p className="text-xs font-black text-slate-400 dark:text-white/30 uppercase tracking-widest text-center leading-relaxed">
+                            No conversations yet.<br />Search to start chatting.
+                          </p>
                         </div>
                       ) : chats.map((chat) => {
                         const otherId = chat.participants?.find((p) => p !== String(user.userId));
@@ -247,13 +292,16 @@ export default function ChatPanel() {
                           <button
                             key={chat.id}
                             onClick={() => openExistingChat(chat)}
-                            className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-all group text-left"
+                            className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5 transition-all group text-left"
                           >
                             <Avatar name={otherName} role={otherRole} />
                             <div className="flex-1 min-w-0">
-                              <p className="font-black text-white text-sm truncate">{otherName}</p>
-                              <p className="text-[11px] text-white/40 truncate font-medium mt-0.5">{chat.lastMessage || 'No messages yet'}</p>
+                              <p className="font-black text-slate-900 dark:text-white text-sm truncate">{otherName}</p>
+                              <p className="text-[11px] text-slate-500 dark:text-white/40 truncate font-medium mt-0.5">
+                                {chat.lastMessage || 'No messages yet'}
+                              </p>
                             </div>
+                            <ChevronRight size={14} className="text-slate-300 dark:text-white/20 group-hover:text-primary-500 transition-colors shrink-0" />
                           </button>
                         );
                       })}
@@ -269,9 +317,9 @@ export default function ChatPanel() {
                 {/* Messages */}
                 <div className="flex-1 overflow-y-auto no-scrollbar px-4 py-4 space-y-3">
                   {messages.length === 0 && (
-                    <div className="flex flex-col items-center justify-center h-full opacity-30">
-                      <MessageSquare size={32} className="text-white/20 mb-3" />
-                      <p className="text-xs font-black text-white/40 uppercase tracking-widest">Start the conversation</p>
+                    <div className="flex flex-col items-center justify-center h-full gap-3 opacity-40">
+                      <MessageSquare size={32} className="text-slate-400 dark:text-white/20" />
+                      <p className="text-xs font-black text-slate-500 dark:text-white/40 uppercase tracking-widest">Start the conversation</p>
                     </div>
                   )}
                   {messages.map((msg) => {
@@ -288,11 +336,11 @@ export default function ChatPanel() {
                           <div className={`px-4 py-2.5 rounded-2xl text-sm font-medium leading-relaxed
                             ${isMine
                               ? 'bg-primary-600 text-white rounded-br-md'
-                              : 'bg-white/10 text-white rounded-bl-md'}`}
+                              : 'bg-slate-100 dark:bg-white/10 text-slate-900 dark:text-white rounded-bl-md'}`}
                           >
                             {msg.text}
                           </div>
-                          <p className="text-[10px] text-white/20 font-bold px-1">
+                          <p className="text-[10px] text-slate-400 dark:text-white/20 font-bold px-1">
                             {formatTime(msg.createdAt)}
                           </p>
                         </div>
@@ -303,19 +351,19 @@ export default function ChatPanel() {
                 </div>
 
                 {/* Input */}
-                <div className="px-4 py-3 border-t border-white/10 flex items-center gap-2 shrink-0">
+                <div className="px-4 py-3 border-t border-slate-200/80 dark:border-white/10 flex items-center gap-2 shrink-0 bg-white dark:bg-transparent">
                   <input
                     ref={inputRef}
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
                     placeholder="Type a message..."
-                    className="flex-1 bg-white/5 border border-white/10 rounded-xl py-2.5 px-4 text-sm text-white placeholder-white/30 focus:outline-none focus:border-primary-500/50 transition-colors"
+                    className="flex-1 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl py-2.5 px-4 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-white/30 focus:outline-none focus:border-primary-500 dark:focus:border-primary-500/50 transition-colors"
                   />
                   <button
                     onClick={handleSend}
                     disabled={!newMessage.trim() || sending}
-                    className="w-10 h-10 rounded-xl bg-primary-600 flex items-center justify-center text-white hover:bg-primary-500 transition-all disabled:opacity-30 disabled:cursor-not-allowed active:scale-90"
+                    className="w-10 h-10 rounded-xl bg-primary-600 flex items-center justify-center text-white hover:bg-primary-500 transition-all disabled:opacity-30 disabled:cursor-not-allowed active:scale-90 shrink-0"
                   >
                     <Send size={16} />
                   </button>

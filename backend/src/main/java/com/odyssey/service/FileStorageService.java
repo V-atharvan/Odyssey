@@ -24,6 +24,7 @@ public class FileStorageService {
     private final S3Client s3Client;
     private final String bucketName;
     private final String region;
+    private boolean useS3 = false;
 
     @Value("${app.file-upload.base-url:http://localhost:8080/api/files}")
     private String baseUrl;
@@ -40,15 +41,19 @@ public class FileStorageService {
     public void init() {
         try {
             s3Client.headBucket(HeadBucketRequest.builder().bucket(bucketName).build());
-        } catch (S3Exception e) {
-            if (e.statusCode() == 404) {
-                log.info("Creating S3 bucket: {}", bucketName);
-                s3Client.createBucket(CreateBucketRequest.builder().bucket(bucketName).build());
-            } else {
-                log.error("Could not verify S3 bucket: {}", e.getMessage());
-            }
+            useS3 = true;
+            log.info("AWS S3 storage initialized successfully using bucket: {}", bucketName);
         } catch (Exception e) {
-            log.error("Failed to connect to AWS S3 during initialization: {}. File uploads will fail, but application will proceed.", e.getMessage());
+            useS3 = false;
+            log.warn("AWS S3 connection failed: {}. Falling back to local disk storage.", e.getMessage());
+            // Ensure local storage directories exist
+            try {
+                java.nio.file.Files.createDirectories(java.nio.file.Paths.get("uploads/logos"));
+                java.nio.file.Files.createDirectories(java.nio.file.Paths.get("uploads/avatars"));
+                java.nio.file.Files.createDirectories(java.nio.file.Paths.get("uploads/resumes"));
+            } catch (IOException ioException) {
+                log.error("Failed to create local upload directories: {}", ioException.getMessage());
+            }
         }
     }
 
@@ -97,37 +102,58 @@ public class FileStorageService {
         String fileName = UUID.randomUUID().toString() + "." + extension;
         String key = sanitizedSubDir + "/" + fileName;
 
+        if (useS3) {
+            try {
+                PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                        .bucket(bucketName)
+                        .key(key)
+                        .contentType(contentType)
+                        .build();
+
+                s3Client.putObject(putObjectRequest, 
+                    RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
+
+                log.info("File uploaded to S3: {}", key);
+                return String.format("%s/%s/%s", baseUrl, sanitizedSubDir, fileName);
+            } catch (Exception e) {
+                log.error("Failed to upload to S3: {}. Falling back to local disk.", e.getMessage());
+            }
+        }
+
+        // Local Storage Fallback
         try {
-            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
-                    .bucket(bucketName)
-                    .key(key)
-                    .contentType(contentType)
-                    .build();
-
-            s3Client.putObject(putObjectRequest, 
-                RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
-
-            log.info("File uploaded to S3: {}", key);
-
-            // In production (real AWS), this could be the direct S3 URL.
-            // For LocalStack/Dev, we still use our proxy endpoint to serve the file
+            java.nio.file.Path uploadPath = java.nio.file.Paths.get("uploads", sanitizedSubDir);
+            java.nio.file.Files.createDirectories(uploadPath);
+            java.nio.file.Path filePath = uploadPath.resolve(fileName);
+            java.nio.file.Files.copy(file.getInputStream(), filePath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            log.info("File uploaded to local storage: {}", filePath.toAbsolutePath());
             return String.format("%s/%s/%s", baseUrl, sanitizedSubDir, fileName);
         } catch (IOException e) {
-            log.error("Could not store file {}", fileName, e);
-            throw new RuntimeException("Could not store file " + fileName, e);
+            log.error("Could not store file locally: {}", fileName, e);
+            throw new RuntimeException("Could not store file locally " + fileName, e);
         }
     }
 
     public byte[] loadFile(String subDir, String fileName) throws IOException {
         String key = subDir + "/" + fileName;
-        try {
-            return s3Client.getObjectAsBytes(GetObjectRequest.builder()
-                    .bucket(bucketName)
-                    .key(key)
-                    .build()).asByteArray();
-        } catch (S3Exception e) {
-            log.error("File not found in S3: {}", key);
-            throw new RuntimeException("File not found: " + fileName, e);
+        if (useS3) {
+            try {
+                return s3Client.getObjectAsBytes(GetObjectRequest.builder()
+                        .bucket(bucketName)
+                        .key(key)
+                        .build()).asByteArray();
+            } catch (Exception e) {
+                log.error("Failed to load file from S3: {}. Checking local disk.", e.getMessage());
+            }
+        }
+
+        // Local Storage Fallback
+        java.nio.file.Path filePath = java.nio.file.Paths.get("uploads", subDir, fileName);
+        if (java.nio.file.Files.exists(filePath)) {
+            return java.nio.file.Files.readAllBytes(filePath);
+        } else {
+            log.error("File not found on local disk: {}", filePath.toAbsolutePath());
+            throw new RuntimeException("File not found: " + fileName);
         }
     }
 }

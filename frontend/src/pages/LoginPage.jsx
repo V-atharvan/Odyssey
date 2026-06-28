@@ -31,7 +31,7 @@ export default function LoginPage() {
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
-    const { login, loginWithGoogle, loginWithMicrosoft } = useAuth();
+    const { login, loginWithEmail, loginWithGoogle } = useAuth();
     const navigate = useNavigate();
 
     const handleGoogleLogin = async () => {
@@ -58,30 +58,6 @@ export default function LoginPage() {
         }
     };
 
-    const handleMicrosoftLogin = async () => {
-        setLoading(true);
-        try {
-            const fbUser = await loginWithMicrosoft();
-            const idToken = await fbUser.getIdToken();
-
-            const res = await authAPI.firebaseLogin({ idToken });
-            const data = res.data.data;
-
-            login(
-                { email: data.email, fullName: data.fullName, role: data.role, profileId: data.profileId, userId: data.userId },
-                data.token
-            );
-            analyticsEvents.login('microsoft');
-            toast.success(`Welcome back, ${data.fullName}!`);
-            navigate(ROLE_PATHS[data.role] || '/');
-        } catch (err) {
-            console.error("Microsoft login failed", err);
-            toast.error(err.response?.data?.message || 'Microsoft login failed');
-        } finally {
-            setLoading(false);
-        }
-    };
-
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
@@ -92,6 +68,14 @@ export default function LoginPage() {
                 { email: data.email, fullName: data.fullName, role: data.role, profileId: data.profileId, userId: data.userId },
                 data.token
             );
+
+            // Log in to Firebase under the hood so file uploads & FCM work
+            try {
+                await loginWithEmail(email, password);
+            } catch (fbErr) {
+                console.warn("Firebase sign-in under the hood failed:", fbErr.message);
+            }
+
             analyticsEvents.login('email');
             toast.success(`Welcome back, ${data.fullName}!`);
             navigate(ROLE_PATHS[data.role] || '/');
@@ -289,30 +273,6 @@ export default function LoginPage() {
                                 <span className="text-sm font-semibold text-text-heading">Sign in with Google</span>
                             </button>
 
-                            <button
-                                type="button"
-                                onClick={handleMicrosoftLogin}
-                                disabled={loading}
-                                className="w-full mt-3 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 flex items-center justify-center gap-3 hover:bg-slate-50 dark:hover:bg-white/5 transition-all active:scale-95 disabled:opacity-50 text-slate-700 dark:text-white bg-transparent"
-                            >
-                                <svg className="w-5 h-5" viewBox="0 0 23 23">
-                                    <rect x="0" y="0" width="11" height="11" fill="#f25022" />
-                                    <rect x="12" y="0" width="11" height="11" fill="#7fba00" />
-                                    <rect x="0" y="12" width="11" height="11" fill="#00a4ef" />
-                                    <rect x="12" y="12" width="11" height="11" fill="#ffb900" />
-                                </svg>
-                                <span className="text-sm font-semibold text-text-heading">Sign in with Microsoft</span>
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={() => setShowPhoneFlow(true)}
-                                disabled={loading}
-                                className="w-full mt-3 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 flex items-center justify-center gap-3 hover:bg-slate-50 dark:hover:bg-white/5 transition-all active:scale-95 disabled:opacity-50 text-slate-700 dark:text-white bg-transparent"
-                            >
-                                <Phone size={18} className="text-emerald-600 dark:text-emerald-400" />
-                                <span className="text-sm font-semibold text-text-heading">Sign in with Phone (OTP)</span>
-                            </button>
 
                             <p className="text-center text-slate-500 dark:text-slate-400 mt-6 font-medium">
                                 Don't have an account?{' '}
