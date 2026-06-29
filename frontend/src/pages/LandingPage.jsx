@@ -17,9 +17,11 @@ import logo from '../assets/logo.jpg';
 import { contactAPI } from '../api/api';
 import toast from 'react-hot-toast';
 import ThemeToggle from '../components/common/ThemeToggle';
+import { useAuth } from '../context/AuthContext';
 
 const LandingPage = () => {
   const navigate = useNavigate();
+  const { isAuthenticated, user } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
@@ -85,18 +87,32 @@ const LandingPage = () => {
             <a href="#about" className="text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">About</a>
             <ThemeToggle />
             <div className="h-4 w-[1px] bg-slate-300 dark:bg-white/10 mx-2" />
-            <button
-              onClick={() => navigate('/login')}
-              className="text-sm font-semibold text-slate-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
-            >
-              Sign In
-            </button>
-            <button
-              onClick={() => navigate('/register')}
-              className="px-5 py-2.5 bg-primary-600 hover:bg-primary-500 text-white text-sm font-bold rounded-xl transition-all active:scale-95 shadow-lg shadow-primary-600/20"
-            >
-              Get Started
-            </button>
+            {isAuthenticated ? (
+              <button
+                onClick={() => {
+                  const PATHS = { STUDENT: '/student', COMPANY: '/company', COLLEGE_ADMIN: '/college', ADMIN: '/admin' };
+                  navigate(PATHS[user?.role] || '/login');
+                }}
+                className="px-5 py-2.5 bg-primary-600 hover:bg-primary-500 text-white text-sm font-bold rounded-xl transition-all active:scale-95 shadow-lg shadow-primary-600/20"
+              >
+                Go to Dashboard
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={() => navigate('/login')}
+                  className="text-sm font-semibold text-slate-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+                >
+                  Sign In
+                </button>
+                <button
+                  onClick={() => navigate('/register')}
+                  className="px-5 py-2.5 bg-primary-600 hover:bg-primary-500 text-white text-sm font-bold rounded-xl transition-all active:scale-95 shadow-lg shadow-primary-600/20"
+                >
+                  Get Started
+                </button>
+              </>
+            )}
           </div>
         </div>
       </nav>
@@ -132,19 +148,34 @@ const LandingPage = () => {
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-5">
-              <button
-                onClick={() => navigate('/register')}
-                className="w-full sm:w-auto px-10 py-5 bg-primary-600 hover:bg-primary-500 text-white font-bold rounded-2xl text-lg transition-all active:scale-95 shadow-xl shadow-primary-600/25 flex items-center justify-center gap-3 group"
-              >
-                Join the Voyage
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </button>
-              <button
-                onClick={() => navigate('/login')}
-                className="w-full sm:w-auto px-10 py-5 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white font-bold rounded-2xl text-lg transition-all active:scale-95 backdrop-blur-sm"
-              >
-                Explore Platform
-              </button>
+              {isAuthenticated ? (
+                <button
+                  onClick={() => {
+                    const PATHS = { STUDENT: '/student', COMPANY: '/company', COLLEGE_ADMIN: '/college', ADMIN: '/admin' };
+                    navigate(PATHS[user?.role] || '/login');
+                  }}
+                  className="w-full sm:w-auto px-10 py-5 bg-primary-600 hover:bg-primary-500 text-white font-bold rounded-2xl text-lg transition-all active:scale-95 shadow-xl shadow-primary-600/25 flex items-center justify-center gap-3 group"
+                >
+                  Go to Dashboard
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={() => navigate('/register')}
+                    className="w-full sm:w-auto px-10 py-5 bg-primary-600 hover:bg-primary-500 text-white font-bold rounded-2xl text-lg transition-all active:scale-95 shadow-xl shadow-primary-600/25 flex items-center justify-center gap-3 group"
+                  >
+                    Join the Voyage
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  </button>
+                  <button
+                    onClick={() => navigate('/login')}
+                    className="w-full sm:w-auto px-10 py-5 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white font-bold rounded-2xl text-lg transition-all active:scale-95 backdrop-blur-sm"
+                  >
+                    Explore Platform
+                  </button>
+                </>
+              )}
             </div>
           </motion.div>
         </div>

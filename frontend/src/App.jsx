@@ -56,7 +56,7 @@ function App() {
         <ErrorBoundary>
           <Routes>
             {/* Public */}
-            <Route path="/" element={<RootRedirect />} />
+            <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
 
