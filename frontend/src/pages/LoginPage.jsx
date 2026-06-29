@@ -52,11 +52,24 @@ export default function LoginPage() {
             navigate(ROLE_PATHS[data.role] || '/');
         } catch (err) {
             console.error("Google login failed", err);
-            toast.error(err.response?.data?.message || 'Google login failed');
+            // Firebase-specific error: email already registered with password
+            if (err?.code === 'auth/account-exists-with-different-credential') {
+                toast.error(
+                    'This email is already registered with email & password. Please sign in using your password.',
+                    { duration: 6000 }
+                );
+            } else if (err?.code === 'auth/popup-closed-by-user') {
+                // User closed popup — silent, no toast needed
+            } else if (err?.code === 'auth/popup-blocked') {
+                toast.error('Popup was blocked by your browser. Please allow popups for this site and try again.');
+            } else {
+                toast.error(err.response?.data?.message || err?.message || 'Google login failed');
+            }
         } finally {
             setLoading(false);
         }
     };
+
 
     const handleSubmit = async (e) => {
         e.preventDefault();
