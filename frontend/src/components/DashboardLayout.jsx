@@ -175,7 +175,7 @@ export default function DashboardLayout({ children }) {
                 </nav>
 
                 {/* User Info Footer */}
-                <div 
+                <div
                     onClick={() => {
                         if (user?.role === 'STUDENT') {
                             navigate(`/portfolio/${user.profileId}`);

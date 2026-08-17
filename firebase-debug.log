@@ -1,0 +1,18 @@
+[debug] [2026-06-29T17:29:27.168Z] ----------------------------------------------------------------------
+[debug] [2026-06-29T17:29:27.175Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\Atharva\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js help auth
+[debug] [2026-06-29T17:29:27.176Z] CLI Version:   15.2.1
+[debug] [2026-06-29T17:29:27.176Z] Platform:      win32
+[debug] [2026-06-29T17:29:27.176Z] Node Version:  v24.13.0
+[debug] [2026-06-29T17:29:27.176Z] Time:          Mon Jun 29 2026 22:59:27 GMT+0530 (India Standard Time)
+[debug] [2026-06-29T17:29:27.177Z] ----------------------------------------------------------------------
+[debug] 
+[warn] 
+[warn] !  auth is not a valid command. See below for valid commands 
+[info]  Privacy Policy: https://firebase.google.com/support/privacy
+[info] 
+[debug] [2026-06-29T17:29:44.454Z] Error: Timed out.
+    at Timeout.<anonymous> (C:\Users\Atharva\AppData\Roaming\npm\node_modules\firebase-tools\lib\utils.js:308:49)
+    at listOnTimeout (node:internal/timers:605:17)
+    at process.processTimers (node:internal/timers:541:7)
+[error] 
+[error] Error: An unexpected error has occurred.

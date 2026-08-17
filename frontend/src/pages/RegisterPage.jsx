@@ -64,6 +64,9 @@ export default function RegisterPage() {
 
     const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
 
+    const [otpCode, setOtpCode] = useState('');
+    const [isEmailOtpStep, setIsEmailOtpStep] = useState(false);
+
     const handleSignupSubmit = async (e) => {
         e.preventDefault();
         if (formData.password !== formData.confirmPassword) {
@@ -71,12 +74,52 @@ export default function RegisterPage() {
         }
         setLoading(true);
         try {
-            // 1. Register with Firebase
-            const fbUser = await registerWithEmail(formData.email, formData.password, formData.fullName);
-            const idToken = await fbUser.getIdToken();
+            // Initiate traditional registration -> backend generates & emails OTP
+            await authAPI.register({
+                fullName: formData.fullName,
+                email: formData.email,
+                password: formData.password,
+                role: role
+            });
 
-            // 2. Register in Odyssey Backend (reusing firebaseLogin endpoint)
-            const res = await authAPI.firebaseLogin({ idToken, role });
+            toast.success('Verification OTP sent to your email!');
+            setIsEmailOtpStep(true);
+        } catch (err) {
+            console.error('Registration error:', err);
+            // Fallback to Firebase registration if traditional API fails (e.g. offline fallback)
+            try {
+                const fbUser = await registerWithEmail(formData.email, formData.password, formData.fullName);
+                const idToken = await fbUser.getIdToken();
+                const res = await authAPI.firebaseLogin({ idToken, role });
+                const data = res.data.data;
+
+                login(
+                    { email: data.email, fullName: data.fullName, role: data.role, profileId: data.profileId, userId: data.userId },
+                    data.token
+                );
+
+                toast.success('Registration successful!');
+                analyticsEvents.signUp(role, 'email');
+                setStep(5);
+            } catch (fbErr) {
+                toast.error(err.response?.data?.message || err.message || 'Registration failed');
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleVerifyEmailOtp = async (e) => {
+        e.preventDefault();
+        if (!otpCode || otpCode.trim().length < 4) {
+            return toast.error('Please enter a valid OTP code');
+        }
+        setLoading(true);
+        try {
+            const res = await authAPI.verifyOtp({
+                email: formData.email,
+                code: otpCode.trim()
+            });
             const data = res.data.data;
 
             login(
@@ -84,12 +127,12 @@ export default function RegisterPage() {
                 data.token
             );
 
-            toast.success('Registration successful!');
+            toast.success('Email verified successfully!');
             analyticsEvents.signUp(role, 'email');
             setStep(5);
         } catch (err) {
-            console.error('Registration error:', err);
-            toast.error(err.response?.data?.message || err.message || 'Registration failed');
+            console.error('OTP verification error:', err);
+            toast.error(err.response?.data?.message || err.message || 'OTP verification failed');
         } finally {
             setLoading(false);
         }
@@ -205,60 +248,92 @@ export default function RegisterPage() {
                         </div>
                     )}
 
-                    {/* STEP 3: Email Signup Form */}
+                    {/* STEP 3: Email Signup / OTP Form */}
                     {step === 3 && (
-                        <form onSubmit={handleSignupSubmit} className="space-y-4 animate-fade-in">
-                            <div className="flex items-center gap-0 mb-4 px-2">
-                                <button type="button" onClick={() => setStep(2)} className="w-10 h-10 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 rounded-xl transition-all">
-                                    <ArrowLeft size={24} />
+                        !isEmailOtpStep ? (
+                            <form onSubmit={handleSignupSubmit} className="space-y-4 animate-fade-in">
+                                <div className="flex items-center gap-0 mb-4 px-2">
+                                    <button type="button" onClick={() => setStep(2)} className="w-10 h-10 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 rounded-xl transition-all">
+                                        <ArrowLeft size={24} />
+                                    </button>
+                                    <div className="flex-1 text-center pr-8">
+                                        <h3 className="font-bold text-text-heading text-xl">Sign up with Email</h3>
+                                        <p className="text-sm text-text-muted">Joining as {role.replace('_', ' ')}</p>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="label">Full Name</label>
+                                    <input className="input" name="fullName" placeholder="John Doe"
+                                        value={formData.fullName} onChange={handleChange} required />
+                                </div>
+                                <div>
+                                    <label className="label">Email Address</label>
+                                    <input className="input" type="email" name="email" placeholder="you@example.com"
+                                        value={formData.email} onChange={handleChange} required />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="label">Password</label>
+                                        <div className="relative">
+                                            <input className="input pr-10" type={showPassword ? "text" : "password"} name="password" placeholder="••••••••"
+                                                value={formData.password} onChange={handleChange} required minLength={8} />
+                                            <button type="button" onClick={() => setShowPassword(!showPassword)}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none">
+                                                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="label">Confirm Password</label>
+                                        <div className="relative">
+                                            <input className="input pr-10" type={showConfirmPassword ? "text" : "password"} name="confirmPassword" placeholder="••••••••"
+                                                value={formData.confirmPassword} onChange={handleChange} required minLength={8} />
+                                            <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none">
+                                                {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button type="submit"
+                                    className="btn-primary w-full py-4 mt-4 shadow-xl shadow-primary-600/20 flex items-center justify-center gap-2"
+                                    disabled={loading}>
+                                    {loading ? <span className="spinner w-6 h-6 border-white/30" /> : <>Continue <ArrowRight size={20} /></>}
                                 </button>
-                                <div className="flex-1 text-center pr-8">
-                                    <h3 className="font-bold text-text-heading text-xl">Sign up with Email</h3>
-                                    <p className="text-sm text-text-muted">Joining as {role.replace('_', ' ')}</p>
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="label">Full Name</label>
-                                <input className="input" name="fullName" placeholder="John Doe"
-                                    value={formData.fullName} onChange={handleChange} required />
-                            </div>
-                            <div>
-                                <label className="label">Email Address</label>
-                                <input className="input" type="email" name="email" placeholder="you@example.com"
-                                    value={formData.email} onChange={handleChange} required />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="label">Password</label>
-                                    <div className="relative">
-                                        <input className="input pr-10" type={showPassword ? "text" : "password"} name="password" placeholder="••••••••"
-                                            value={formData.password} onChange={handleChange} required minLength={8} />
-                                        <button type="button" onClick={() => setShowPassword(!showPassword)}
-                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none">
-                                            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                                        </button>
+                            </form>
+                        ) : (
+                            <form onSubmit={handleVerifyEmailOtp} className="space-y-4 animate-fade-in text-center">
+                                <div className="flex items-center gap-0 mb-4 px-2">
+                                    <button type="button" onClick={() => setIsEmailOtpStep(false)} className="w-10 h-10 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 rounded-xl transition-all">
+                                        <ArrowLeft size={24} />
+                                    </button>
+                                    <div className="flex-1 text-center pr-8">
+                                        <h3 className="font-bold text-text-heading text-xl">Enter Verification Code</h3>
+                                        <p className="text-sm text-text-muted">Code sent to <span className="font-semibold text-primary-600">{formData.email}</span></p>
                                     </div>
                                 </div>
-                                <div>
-                                    <label className="label">Confirm Password</label>
-                                    <div className="relative">
-                                        <input className="input pr-10" type={showConfirmPassword ? "text" : "password"} name="confirmPassword" placeholder="••••••••"
-                                            value={formData.confirmPassword} onChange={handleChange} required minLength={8} />
-                                        <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none">
-                                            {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
 
-                            <button type="submit"
-                                className="btn-primary w-full py-4 mt-4 shadow-xl shadow-primary-600/20 flex items-center justify-center gap-2"
-                                disabled={loading}>
-                                {loading ? <span className="spinner w-6 h-6 border-white/30" /> : <>Continue <ArrowRight size={20} /></>}
-                            </button>
-                        </form>
+                                <div className="my-6">
+                                    <input 
+                                        className="input text-center text-2xl tracking-[0.5em] font-mono py-3" 
+                                        type="text" 
+                                        maxLength={6} 
+                                        placeholder="123456"
+                                        value={otpCode} 
+                                        onChange={(e) => setOtpCode(e.target.value)} 
+                                        required 
+                                    />
+                                </div>
+
+                                <button type="submit"
+                                    className="btn-primary w-full py-4 shadow-xl shadow-primary-600/20 flex items-center justify-center gap-2"
+                                    disabled={loading}>
+                                    {loading ? <span className="spinner w-6 h-6 border-white/30" /> : <>Verify & Continue <ArrowRight size={20} /></>}
+                                </button>
+                            </form>
+                        )
                     )}
 
                     {/* STEP 4: Phone OTP Flow */}

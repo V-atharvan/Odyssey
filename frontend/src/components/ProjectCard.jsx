@@ -5,7 +5,7 @@ export default function ProjectCard({ project, onApply, onView, showMatchScore }
     const skills = project.skillsRequired || [];
 
     return (
-        <motion.div 
+        <motion.div
             whileHover={{ y: -6 }}
             transition={{ type: "spring", stiffness: 400, damping: 25 }}
             className="rounded-[1.5rem] bg-surface-50 dark:bg-surface-900/50 backdrop-blur-md border border-border dark:border-white/10 p-6 flex flex-col h-full relative overflow-hidden group hover:bg-white dark:hover:bg-surface-900/80 transition-all hover:shadow-[0_0_40px_-10px_rgba(var(--color-primary-500),0.15)]"
@@ -54,9 +54,9 @@ export default function ProjectCard({ project, onApply, onView, showMatchScore }
             </div>
 
             <div className="mb-4">
-                 <span className="text-primary-600 dark:text-primary-400 text-[10px] font-black uppercase tracking-widest">
-                     {project.category || 'General'}
-                 </span>
+                <span className="text-primary-600 dark:text-primary-400 text-[10px] font-black uppercase tracking-widest">
+                    {project.category || 'General'}
+                </span>
             </div>
 
             <p className="text-text-body text-sm font-medium line-clamp-2 leading-relaxed mb-4">
@@ -80,8 +80,8 @@ export default function ProjectCard({ project, onApply, onView, showMatchScore }
                 <div>
                     <p className="text-[10px] font-bold text-text-muted tracking-wider mb-1 uppercase">Stipend</p>
                     <p className="text-base font-black text-text-heading">
-                        {project.stipendAmount && project.stipendAmount > 0 
-                            ? `₹${project.stipendAmount.toLocaleString()}` 
+                        {project.stipendAmount && project.stipendAmount > 0
+                            ? `₹${project.stipendAmount.toLocaleString()}`
                             : 'Unpaid / Equity'}
                     </p>
                 </div>
@@ -99,23 +99,23 @@ export default function ProjectCard({ project, onApply, onView, showMatchScore }
 
             <div className="grid grid-cols-2 gap-3">
                 {onView && (
-                    <button 
-                        onClick={() => onView(project)} 
+                    <button
+                        onClick={() => onView(project)}
                         className="py-2.5 rounded-xl border border-primary-500/30 text-primary-600 dark:text-primary-400 font-bold text-[13px] hover:bg-primary-500/10 transition-colors"
                     >
                         View
                     </button>
                 )}
                 {onApply && project.status === 'OPEN' && (
-                    <button 
-                        onClick={() => onApply(project)} 
+                    <button
+                        onClick={() => onApply(project)}
                         className="py-2.5 rounded-xl bg-primary-600 text-white font-bold text-[13px] shadow hover:bg-primary-500 transition-colors"
                     >
                         Apply
                     </button>
                 )}
             </div>
-            
+
             <div className="absolute top-0 right-0 w-32 h-32 bg-primary-500/5 rounded-full blur-[50px] pointer-events-none" />
         </motion.div>
     );

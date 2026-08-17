@@ -2,9 +2,11 @@ package com.odyssey.service;
 
 import com.odyssey.dto.request.LoginRequest;
 import com.odyssey.dto.request.RegisterRequest;
+import com.odyssey.dto.request.VerifyOtpRequest;
 import com.odyssey.dto.response.AuthResponse;
 import com.odyssey.entity.*;
 import com.odyssey.exception.BadRequestException;
+import com.odyssey.exception.ResourceNotFoundException;
 import com.odyssey.repository.*;
 import com.odyssey.security.JwtUtil;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +19,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
+import java.time.LocalDateTime;
+import java.util.Map;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -26,12 +32,125 @@ public class AuthService {
     private final StudentProfileRepository studentProfileRepository;
     private final CollegeRepository collegeRepository;
     private final CompanyRepository companyRepository;
+    private final OtpRepository otpRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final AuthenticationManager authenticationManager;
     private final UserDetailsService userDetailsService;
 
     private final FirebaseService firebaseService;
+    private final EmailService emailService;
+
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
+    @Transactional
+    public Map<String, String> register(RegisterRequest request) {
+        String email = request.getEmail().trim().toLowerCase();
+
+        // 1. Role validation - forbid self-assigning ADMIN
+        User.Role role;
+        try {
+            role = User.Role.valueOf(request.getRole().toUpperCase());
+            if (role == User.Role.ADMIN) {
+                throw new BadRequestException("Self-registration as ADMIN is forbidden");
+            }
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("Invalid role specified: " + request.getRole());
+        }
+
+        // 2. Duplicate email check
+        var existingUserOpt = userRepository.findByEmail(email);
+        User user;
+        if (existingUserOpt.isPresent()) {
+            user = existingUserOpt.get();
+            if (user.getStatus() != AccountStatus.PENDING_VERIFICATION) {
+                throw new BadRequestException("Email is already registered. Please sign in.");
+            }
+            // User exists but pending verification - update details
+            user.setFullName(request.getFullName());
+            user.setPassword(passwordEncoder.encode(request.getPassword()));
+            user.setRole(role);
+            user = userRepository.save(user);
+        } else {
+            // Create new User in PENDING_VERIFICATION state
+            user = User.builder()
+                    .email(email)
+                    .fullName(request.getFullName())
+                    .password(passwordEncoder.encode(request.getPassword()))
+                    .role(role)
+                    .status(AccountStatus.PENDING_VERIFICATION)
+                    .active(true)
+                    .emailVerified(false)
+                    .build();
+            user = userRepository.save(user);
+            initProfile(user, role, request);
+        }
+
+        // 3. Generate secure 6-digit OTP code
+        String otpCode = String.format("%06d", SECURE_RANDOM.nextInt(1000000));
+        LocalDateTime expiryTime = LocalDateTime.now().plusMinutes(5);
+
+        // 4. Remove previous OTPs for this email and save new OTP
+        otpRepository.deleteByEmail(email);
+        Otp otp = Otp.builder()
+                .email(email)
+                .code(otpCode)
+                .expiryTime(expiryTime)
+                .used(false)
+                .build();
+        otpRepository.save(otp);
+
+        // 5. Send OTP Email
+        emailService.sendVerificationOtp(email, otpCode);
+        log.info("Registration initiated for {}. OTP code sent.", email);
+
+        return Map.of(
+            "email", email,
+            "message", "Verification code sent to " + email
+        );
+    }
+
+    @Transactional
+    public AuthResponse verifyOtp(VerifyOtpRequest request) {
+        String email = request.getEmail().trim().toLowerCase();
+        String code = request.getCode().trim();
+
+        Otp otp = otpRepository.findByEmailAndCodeAndUsedFalse(email, code)
+                .orElseThrow(() -> new BadRequestException("Invalid or expired OTP code"));
+
+        if (otp.isExpired()) {
+            throw new BadRequestException("OTP code has expired. Please register or request a new code.");
+        }
+
+        // Mark OTP as used
+        otp.setUsed(true);
+        otpRepository.save(otp);
+
+        // Activate User account
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + email));
+
+        user.setStatus(AccountStatus.ACTIVE);
+        user.setEmailVerified(true);
+        userRepository.save(user);
+
+        // Generate JWT token
+        UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
+        String token = jwtUtil.generateToken(userDetails, user.getRole().name());
+
+        log.info("User {} successfully verified OTP and activated account.", email);
+
+        return AuthResponse.builder()
+                .token(token)
+                .tokenType("Bearer")
+                .userId(user.getId())
+                .email(user.getEmail())
+                .fullName(user.getFullName())
+                .role(user.getRole().name())
+                .profileId(getProfileId(user))
+                .message("Verification successful")
+                .build();
+    }
 
     @Transactional
     public AuthResponse firebaseLogin(String idToken, String chosenRole) {

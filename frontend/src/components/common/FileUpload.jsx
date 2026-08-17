@@ -19,7 +19,7 @@ export default function FileUpload({ onUploadComplete, type = 'resume', label = 
         // Basic validation
         const ext = '.' + srcFile.name.split('.').pop().toLowerCase();
         const validTypes = accept.split(',').map(t => t.trim().toLowerCase());
-        
+
         if (!validTypes.includes(ext)) {
             toast.error(`Invalid file type. Please upload ${accept}`);
             return;
@@ -99,7 +99,7 @@ export default function FileUpload({ onUploadComplete, type = 'resume', label = 
     return (
         <div className="space-y-2 group">
             <label className="label text-text-heading font-bold">{label}</label>
-            <div 
+            <div
                 className={`relative border-2 border-dashed rounded-2xl p-6 transition-all duration-300 text-center cursor-pointer overflow-hidden
                            ${dragging ? 'border-primary-500 bg-primary-50/50 shadow-inner' : 'border-border bg-surface-50 hover:border-primary-300 hover:bg-white'}
                            ${file ? 'border-primary-600 bg-primary-50/10' : ''}`}
@@ -108,10 +108,10 @@ export default function FileUpload({ onUploadComplete, type = 'resume', label = 
                 onDrop={(e) => { e.preventDefault(); setDragging(false); handleFile(e.dataTransfer.files[0]); }}
                 onClick={() => !uploading && fileInput.current.click()}
             >
-                <input 
-                    type="file" 
-                    className="hidden" 
-                    ref={fileInput} 
+                <input
+                    type="file"
+                    className="hidden"
+                    ref={fileInput}
                     accept={accept}
                     disabled={uploading}
                     onChange={(e) => handleFile(e.target.files[0])}
@@ -121,7 +121,7 @@ export default function FileUpload({ onUploadComplete, type = 'resume', label = 
                     <div className="space-y-3">
                         <div className="flex justify-center">
                             <div className="w-16 h-16 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 shadow-sm group-hover:scale-110 transition-transform">
-                                 <UploadCloud className="w-8 h-8" />
+                                <UploadCloud className="w-8 h-8" />
                             </div>
                         </div>
                         <div>
@@ -161,7 +161,7 @@ export default function FileUpload({ onUploadComplete, type = 'resume', label = 
                             )}
                         </div>
                         {!uploading && (
-                            <button 
+                            <button
                                 onClick={(e) => { e.stopPropagation(); setFile(null); setPreview(null); }}
                                 className="p-3 bg-white hover:bg-danger-50 text-danger-500 rounded-full border border-border transition-all hover:scale-110"
                             >

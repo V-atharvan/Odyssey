@@ -93,7 +93,12 @@
     letter-spacing: 0.01em;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply tracking-normal leading-tight;
   }
 
@@ -138,7 +143,7 @@
     --text-heading: #ffffff;
     --text-body: #cbd5e1;
     --text-muted: #94a3b8;
-    --surface-50: rgba(255,255,255,0.02);
+    --surface-50: rgba(255, 255, 255, 0.02);
     --border-color: rgba(255, 255, 255, 0.05);
     @apply bg-[#0B0F19] border-white/5 text-white shadow-2xl;
   }
@@ -275,8 +280,13 @@
   }
 
   @keyframes mesh-drift {
-    0% { background-position: 0% 0%; }
-    100% { background-position: 5% 5%; }
+    0% {
+      background-position: 0% 0%;
+    }
+
+    100% {
+      background-position: 5% 5%;
+    }
   }
 
   .glass {
@@ -292,7 +302,7 @@
     --text-heading: #ffffff;
     --text-body: #cbd5e1;
     --text-muted: #94a3b8;
-    --surface-50: rgba(255,255,255,0.02);
+    --surface-50: rgba(255, 255, 255, 0.02);
     --border-color: rgba(255, 255, 255, 0.05);
     background: #0B0F19;
     border: 1px solid rgba(255, 255, 255, 0.05);
@@ -313,10 +323,10 @@
   }
 
   .shadow-premium {
-    box-shadow: 
-      0 2px 4px rgba(0,0,0,0.02),
-      0 10px 20px rgba(0,0,0,0.04),
-      0 20px 40px rgba(0,0,0,0.06);
+    box-shadow:
+      0 2px 4px rgba(0, 0, 0, 0.02),
+      0 10px 20px rgba(0, 0, 0, 0.04),
+      0 20px 40px rgba(0, 0, 0, 0.06);
   }
 
   .micro-border {
@@ -341,18 +351,41 @@
   }
 
   @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   @keyframes slideUp {
-    from { opacity: 0; transform: translateY(30px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   @keyframes bounceSlow {
-    0%, 100% { transform: translateY(-5%); animation-timing-function: cubic-bezier(0.8,0,1,1); }
-    50% { transform: none; animation-timing-function: cubic-bezier(0,0,0.2,1); }
+
+    0%,
+    100% {
+      transform: translateY(-5%);
+      animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+    }
+
+    50% {
+      transform: none;
+      animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+    }
   }
 
   .animate-fade-in {

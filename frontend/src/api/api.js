@@ -7,7 +7,7 @@ import { MOCK_ADMIN_USERS } from './mockData';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
 
-export const DEMO_MODE = import.meta.env.VITE_AUTH_DEMO !== 'false';
+export const DEMO_MODE = import.meta.env.VITE_AUTH_DEMO === 'true';
 export const AI_PROXY_ON = import.meta.env.VITE_AI_PROXY === 'true';
 
 const axiosInstance = axios.create({
